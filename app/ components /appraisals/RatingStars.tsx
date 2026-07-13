@@ -1,37 +1,35 @@
-import { FileCheck, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
-import AppraisalSummaryCards from './AppraisalSummaryCards';
+'use client';
 
-// Inside your parent component
-const summaryItems = [
-  {
-    label: 'Total Appraisals',
-    value: 24,
-    icon: FileCheck,
-    bg: 'bg-blue-100',
-    color: 'text-blue-600'
-  },
-  {
-    label: 'In Review',
-    value: 7,
-    icon: Clock,
-    bg: 'bg-amber-100',
-    color: 'text-amber-600'
-  },
-  {
-    label: 'Pending Signatures',
-    value: 3,
-    icon: AlertTriangle,
-    bg: 'bg-red-100',
-    color: 'text-red-600'
-  },
-  {
-    label: 'Completed',
-    value: 14,
-    icon: CheckCircle,
-    bg: 'bg-emerald-100',
-    color: 'text-emerald-600'
-  }
-];
+import React from 'react';
+import { Star } from 'lucide-react';
 
-// Render
-<AppraisalSummaryCards items={summaryItems} />
+interface Props {
+  value?: number;
+  onChange?: (rating: number) => void;
+  label?: string;
+  disabled?: boolean;
+}
+
+export default function RatingStars({ value = 0, onChange, label, disabled = false }: Props) {
+  return (
+    <div className="space-y-2">
+      {label && <p className="text-sm font-medium text-slate-700">{label}</p>}
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            onClick={() => !disabled && onChange?.(rating)}
+            disabled={disabled}
+            className={`rounded-lg p-1 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+            aria-label={`${label || 'Rating'} ${rating}`}
+          >
+            <Star
+              className={`h-5 w-5 ${rating <= Number(value || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
