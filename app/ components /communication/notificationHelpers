@@ -1,0 +1,51 @@
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import type { Database } from '@/types/database';
+
+// --- Types ---
+interface Incident {
+  id?: string;
+  [key: string]: any;
+}
+
+interface Shift {
+  id?: string;
+  [key: string]: any;
+}
+
+/**
+ * Trigger notification when an incident is reported
+ */
+export async function notifyIncidentReported(incident: Incident, orgId: string) {
+  if (!incident?.id || !orgId) return null;
+
+  const supabase = createClientComponentClient<Database>();
+  const { data, error } = await supabase.functions.invoke('notify-incident-reported', {
+    body: { incident, orgId }
+  });
+
+  if (error) {
+    console.error('Failed to trigger incident notification:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Trigger shift reminder notification
+ */
+export async function notifyShiftReminder(shift: Shift, workerId: string) {
+  if (!shift?.id || !workerId) return null;
+
+  const supabase = createClientComponentClient<Database>();
+  const { data, error } = await supabase.functions.invoke('notify-shift-reminder', {
+    body: { shift, workerId }
+  });
+
+  if (error) {
+    console.error('Failed to trigger shift reminder:', error);
+    throw error;
+  }
+
+  return data;
+}
