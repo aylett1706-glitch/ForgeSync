@@ -1,0 +1,321 @@
+'use client';
+
+import React, { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+
+interface PlacementFormData {
+  id?: string;
+  participant_id: string;
+  employer_id: string;
+  job_title: string;
+  job_description?: string;
+  placement_type: string;
+  start_date: string;
+  end_date?: string;
+  hours_per_week?: number;
+  hourly_rate?: number;
+  supervisor_name?: string;
+  supervisor_email?: string;
+  supervisor_phone?: string;
+  status: string;
+  workplace_adjustments?: string;
+  notes?: string;
+}
+
+interface Props {
+  placement?: PlacementFormData | null;
+  participants: any[];
+  employers: any[];
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+export default function PlacementForm({
+  placement = null,
+  participants,
+  employers,
+  onClose,
+  onSuccess,
+}: Props) {
+  const supabase = createClient();
+
+  const [formData, setFormData] = useState<PlacementFormData>(
+    placement || {
+      participant_id: '',
+      employer_id: '',
+      job_title: '',
+      job_description: '',
+      placement_type: 'work_experience',
+      start_date: '',
+      end_date: '',
+      hours_per_week: 0,
+      hourly_rate: 0,
+      supervisor_name: '',
+      supervisor_email: '',
+      supervisor_phone: '',
+      status: 'pending',
+      workplace_adjustments: '',
+      notes: '',
+    }
+  );
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        ...formData,
+        hours_per_week: formData.hours_per_week ? Number(formData.hours_per_week) : null,
+        hourly_rate: formData.hourly_rate ? Number(formData.hourly_rate) : null,
+      };
+
+      let error;
+
+      if (placement?.id) {
+        // Update existing placement
+        ({ error } = await supabase
+          .from('placements')
+          .update(payload)
+          .eq('id', placement.id));
+      } else {
+        // Create new placement
+        ({ error } = await supabase.from('placements').insert(payload));
+      }
+
+      if (error) throw error;
+
+      toast.success(placement ? 'Placement updated successfully' : 'Placement created successfully');
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save placement');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateField = (field: keyof PlacementFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">
+            {placement ? 'Edit Placement' : 'Create New Placement'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Participant <span className="text-red-500">*</span></Label>
+              <Select 
+                value={formData.participant_id} 
+                onValueChange={(value) => updateField('participant_id', value)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select participant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {participants.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.first_name} {p.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Employer <span className="text-red-500">*</span></Label>
+              <Select 
+                value={formData.employer_id} 
+                onValueChange={(value) => updateField('employer_id', value)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employers.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.business_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label>Job Title <span className="text-red-500">*</span></Label>
+            <Input
+              value={formData.job_title}
+              onChange={(e) => updateField('job_title', e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <Label>Job Description</Label>
+            <Textarea
+              value={formData.job_description || ''}
+              onChange={(e) => updateField('job_description', e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Placement Type <span className="text-red-500">*</span></Label>
+              <Select 
+                value={formData.placement_type} 
+                onValueChange={(value) => updateField('placement_type', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="work_experience">Work Experience</SelectItem>
+                  <SelectItem value="supported_employment">Supported Employment</SelectItem>
+                  <SelectItem value="open_employment">Open Employment</SelectItem>
+                  <SelectItem value="work_trial">Work Trial</SelectItem>
+                  <SelectItem value="traineeship">Traineeship</SelectItem>
+                  <SelectItem value="apprenticeship">Apprenticeship</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Start Date <span className="text-red-500">*</span></Label>
+              <Input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => updateField('start_date', e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label>End Date</Label>
+              <Input
+                type="date"
+                value={formData.end_date || ''}
+                onChange={(e) => updateField('end_date', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Hours per Week</Label>
+              <Input
+                type="number"
+                value={formData.hours_per_week}
+                onChange={(e) => updateField('hours_per_week', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+
+            <div>
+              <Label>Hourly Rate ($)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.hourly_rate}
+                onChange={(e) => updateField('hourly_rate', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+
+            <div>
+              <Label>Status</Label>
+              <Select 
+                value={formData.status} 
+                onValueChange={(value) => updateField('status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="terminated">Terminated</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Supervisor Name</Label>
+              <Input
+                value={formData.supervisor_name || ''}
+                onChange={(e) => updateField('supervisor_name', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Supervisor Email</Label>
+              <Input
+                type="email"
+                value={formData.supervisor_email || ''}
+                onChange={(e) => updateField('supervisor_email', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Supervisor Phone</Label>
+              <Input
+                value={formData.supervisor_phone || ''}
+                onChange={(e) => updateField('supervisor_phone', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Workplace Adjustments</Label>
+            <Textarea
+              value={formData.workplace_adjustments || ''}
+              onChange={(e) => updateField('workplace_adjustments', e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <Label>Additional Notes</Label>
+            <Textarea
+              value={formData.notes || ''}
+              onChange={(e) => updateField('notes', e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-6">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="flex-1 bg-gradient-to-r from-[#0088A8] to-[#7B3F9E]"
+            >
+              {isSubmitting ? 'Saving...' : placement ? 'Update Placement' : 'Create Placement'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
